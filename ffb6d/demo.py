@@ -51,6 +51,19 @@ else:
 bs_utils = Basic_Utils(config)
 
 
+
+AXIS_PTS = np.array([[0,0,0],
+                     [0.1,0,0],
+                     [0,0.1,0],
+                     [0,0,0.1]])
+
+COLORS = [[250,0,0],
+          [0,250,0],
+          [0,0,250]]
+
+
+
+
 def ensure_fd(fd):
     if not os.path.exists(fd):
         os.system('mkdir -p {}'.format(fd))
@@ -121,18 +134,37 @@ def cal_view_pred_pose(model, data, epoch=0, obj_id=-1):
             idx = np.where(pred_cls_ids == cls_id)[0]
             if len(idx) == 0:
                 continue
+
+            # relative pose of object
             pose = pred_pose_lst[idx[0]]
+
+            # print(pose, pose.shape)
+
             if args.dataset == "ycb":
                 obj_id = int(cls_id[0])
-            mesh_pts = bs_utils.get_pointxyz(obj_id, ds_type=args.dataset).copy()
+
+
+            # mesh_pts = bs_utils.get_pointxyz(obj_id, ds_type=args.dataset).copy()
+
+            # axis
+            mesh_pts = AXIS_PTS
+
             mesh_pts = np.dot(mesh_pts, pose[:, :3].T) + pose[:, 3]
+
+            # print(mesh_pts[0])
+
             if args.dataset == "ycb":
                 K = config.intrinsic_matrix["ycb_K1"]
             else:
                 K = config.intrinsic_matrix["linemod"]
             mesh_p2ds = bs_utils.project_p3d(mesh_pts, 1.0, K)
-            color = bs_utils.get_label_color(obj_id, n_obj=22, mode=2)
-            np_rgb = bs_utils.draw_p2ds(np_rgb, mesh_p2ds, color=color)
+            # color = bs_utils.get_label_color(obj_id, n_obj=22, mode=2)
+            # np_rgb = bs_utils.draw_p2ds(np_rgb, mesh_p2ds, color=color)
+
+            for i in range(3):
+                np_rgb = cv2.arrowedLine(np_rgb, tuple(mesh_p2ds[0]), tuple(mesh_p2ds[i+1]), tuple(COLORS[i]), 5)
+
+
         vis_dir = os.path.join(config.log_eval_dir, "pose_vis")
         ensure_fd(vis_dir)
         f_pth = os.path.join(vis_dir, "{}.jpg".format(epoch))
